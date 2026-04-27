@@ -77,8 +77,34 @@ Trap VM_perform_cycle(VM* self) {
          return T_IllegalRegister;                 \
       Word* value = fetch_advance_next_word(self); \
       if (value == nullptr)                        \
-         return T_IllegalAddress;                  \
+         return T_IllegalAddress;
 
+   #define fetch_check_va() \
+      Word* value = fetch_advance_next_word(self);         \
+      if (value == nullptr || *value >= self->memory_size) \
+         return T_IllegalAddress;
+
+   // @todo: Signed versions of the instructions
+   #define fetch_check_ve() \
+      Word* value = fetch_advance_next_word(self);                        \
+      if (value == nullptr)                                               \
+         return T_IllegalAddress;                                         \
+      Word new_addr = (self->registers.ip - (4 + sizeof(Word))) + *value; \
+      if (new_addr >= self->memory_size)                                  \
+         return T_IllegalAddress;
+
+   #define fetch_check_ra() \
+      if (invalid_reg(instr.operand) || self->registers.gpr[instr.operand] >= self->memory_size) \
+         return T_IllegalAddress;
+
+   #define fetch_check_re() \
+      if (invalid_reg(instr.operand))                                                \
+         return T_IllegalAddress;                                                    \
+      Word new_addr = (self->registers.ip - 4) + self->registers.gpr[instr.operand]; \
+      if (new_addr >= self->memory_size)                                             \
+         return T_IllegalAddress;
+         
+   Instr_debug_print(instr);
    switch (instr.op_code) {
       // Interrups
       case OC_Halt: {
@@ -97,7 +123,11 @@ Trap VM_perform_cycle(VM* self) {
                fetch_check_rv();
                self->registers.gpr[instr.operand] = *value;
             } break;
-            
+
+            case OV_RA: [[fallthrough]];
+            case OV_RE: [[fallthrough]];
+            case OV_VA: [[fallthrough]];
+            case OV_VE: [[fallthrough]];
             default: {
                return T_IllegalInstructionVariant;
             }
@@ -117,6 +147,10 @@ Trap VM_perform_cycle(VM* self) {
                self->registers.gpr[instr.operand] += *value;
             } break;
 
+            case OV_RA: [[fallthrough]];
+            case OV_RE: [[fallthrough]];
+            case OV_VA: [[fallthrough]];
+            case OV_VE: [[fallthrough]];
             default: {
                return T_IllegalInstructionVariant;
             }
@@ -135,6 +169,10 @@ Trap VM_perform_cycle(VM* self) {
                self->registers.gpr[instr.operand] -= *value;
             } break;
 
+            case OV_RA: [[fallthrough]];
+            case OV_RE: [[fallthrough]];
+            case OV_VA: [[fallthrough]];
+            case OV_VE: [[fallthrough]];
             default: {
                return T_IllegalInstructionVariant;
             }
@@ -153,6 +191,10 @@ Trap VM_perform_cycle(VM* self) {
                self->registers.gpr[instr.operand] *= *value;
             } break;
 
+            case OV_RA: [[fallthrough]];
+            case OV_RE: [[fallthrough]];
+            case OV_VA: [[fallthrough]];
+            case OV_VE: [[fallthrough]];
             default: {
                return T_IllegalInstructionVariant;
             }
@@ -175,6 +217,42 @@ Trap VM_perform_cycle(VM* self) {
                   return T_DivisionByZero;
 
                self->registers.gpr[instr.operand] /= *value;
+            } break;
+
+            case OV_RA: [[fallthrough]];
+            case OV_RE: [[fallthrough]];
+            case OV_VA: [[fallthrough]];
+            case OV_VE: [[fallthrough]];
+            default: {
+               return T_IllegalInstructionVariant;
+            }
+         }
+      } break;
+
+      // Jumps
+      case OC_Jmp: {
+         switch (instr.variant) {
+            case OV_RR: [[fallthrough]];
+            case OV_RV: [[fallthrough]];
+
+            case OV_RA: {
+               fetch_check_ra();
+               self->registers.ip = self->registers.gpr[instr.operand];
+            } break;
+            
+            case OV_RE: {
+               fetch_check_re();
+               self->registers.ip = new_addr;
+            } break;
+            
+            case OV_VA: {
+               fetch_check_va();
+               self->registers.ip = *value;
+            } break;
+            
+            case OV_VE: {
+               fetch_check_ve();
+               self->registers.ip = new_addr;
             } break;
 
             default: {
