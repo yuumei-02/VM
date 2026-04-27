@@ -41,6 +41,21 @@ Instr VM_get_instr(VM* self) {
    };
 }
 
+bool invalid_reg(u8 reg) {
+   return reg >= GPR_REG_COUNT;
+}
+
+/// Returns [null] on invalid addr
+Word* fetch_advance_next_word(VM* vm) {
+   if (vm->registers.ip >= vm->memory_size)
+      return nullptr;
+
+   Word* word = (Word*) (vm->memory + vm->registers.ip);
+   vm->registers.ip += sizeof(Word);
+
+   return word;
+}
+
 Trap VM_perform_cycle(VM* self) {
    mcu_assert(self != nullptr, "self can't be null");
 
@@ -51,22 +66,117 @@ Trap VM_perform_cycle(VM* self) {
    Instr instr = VM_get_instr(self);
    self->registers.ip += 4;
 
+   #define fetch_check_rr() \
+      u8 src  = instr.operand & 0x0F;            \
+      u8 dest = (instr.operand >> 4) & 0x0F;     \
+      if (invalid_reg(src) || invalid_reg(dest)) \
+         return T_IllegalRegister;
+
+   #define fetch_check_rv() \
+      if (invalid_reg(instr.operand))              \
+         return T_IllegalRegister;                 \
+      Word* value = fetch_advance_next_word(self); \
+      if (value == nullptr)                        \
+         return T_IllegalAddress;                  \
+
    switch (instr.op_code) {
+      // Interrups
       case OC_Halt: {
          return T_Halt;
       }
-      
+
+      // Memory
       case OC_Mov: {
          switch (instr.variant) {
-            case OV_RR: mcu_todo("not yet implemented");
-            case OV_RV: {
-               if (instr.operand >= GPR_REG_COUNT)
-                  return T_IllegalRegister;
+            case OV_RR: {
+               fetch_check_rr();
+               self->registers.gpr[dest] = self->registers.gpr[src];
+            } break;
 
-               /* self->registers.gpr[instr.operand] = self->memory[self->registers.ip++]; */
-               self->registers.gpr[instr.operand] = 69;
+            case OV_RV: {
+               fetch_check_rv();
+               self->registers.gpr[instr.operand] = *value;
             } break;
             
+            default: {
+               return T_IllegalInstructionVariant;
+            }
+         }
+      } break;
+
+      // Arithmatic
+      case OC_Add: {
+         switch (instr.variant) {
+            case OV_RR: {
+               fetch_check_rr();
+               self->registers.gpr[dest] += self->registers.gpr[src];
+            } break;
+
+            case OV_RV: {
+               fetch_check_rv();
+               self->registers.gpr[instr.operand] += *value;
+            } break;
+
+            default: {
+               return T_IllegalInstructionVariant;
+            }
+         }
+      } break;
+      
+      case OC_Min: {
+         switch (instr.variant) {
+            case OV_RR: {
+               fetch_check_rr();
+               self->registers.gpr[dest] -= self->registers.gpr[src];
+            } break;
+
+            case OV_RV: {
+               fetch_check_rv();
+               self->registers.gpr[instr.operand] -= *value;
+            } break;
+
+            default: {
+               return T_IllegalInstructionVariant;
+            }
+         }
+      } break;
+      
+      case OC_Mul: {
+         switch (instr.variant) {
+            case OV_RR: {
+               fetch_check_rr();
+               self->registers.gpr[dest] *= self->registers.gpr[src];
+            } break;
+
+            case OV_RV: {
+               fetch_check_rv();
+               self->registers.gpr[instr.operand] *= *value;
+            } break;
+
+            default: {
+               return T_IllegalInstructionVariant;
+            }
+         }
+      } break;
+      
+      case OC_Div: {
+         switch (instr.variant) {
+            case OV_RR: {
+               fetch_check_rr();
+               if (self->registers.gpr[src] == 0)
+                  return T_DivisionByZero;
+                  
+               self->registers.gpr[dest] /= self->registers.gpr[src];
+            } break;
+
+            case OV_RV: {
+               fetch_check_rv();
+               if (self->registers.gpr[*value] == 0)
+                  return T_DivisionByZero;
+
+               self->registers.gpr[instr.operand] /= *value;
+            } break;
+
             default: {
                return T_IllegalInstructionVariant;
             }
@@ -102,13 +212,16 @@ void VM_dump_registers(VM* self) {
 
 const cstr Trap_to_cstr(Trap self) {
    switch (self) {
-      case T_Ok:                        return "Ok";
-      case T_Halt:                      return "Halt";
+      case T_Ok:   return "Ok";
+      case T_Halt: return "Halt";
+      
       case T_IllegalRegister:           return "IllegalRegister";
       case T_IllegalInstruction:        return "IllegalInstruction";
       case T_IllegalInstructionVariant: return "IllegalInstructionVariant";
       case T_IllegalAddress:            return "IllegalAddress";
-      default:                          return "Unknown";
+      
+      case T_DivisionByZero: return "DivisionByZero";
+      default:               return "Unknown";
    }
 }
 

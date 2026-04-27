@@ -22,10 +22,13 @@ typedef struct {
 typedef enum : u32 {
    T_Ok,
    T_Halt,
+   
    T_IllegalRegister,
    T_IllegalInstruction,
    T_IllegalInstructionVariant,
-   T_IllegalAddress
+   T_IllegalAddress,
+
+   T_DivisionByZero,
 } Trap;
 
 const cstr Trap_to_cstr(Trap self);
