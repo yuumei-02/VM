@@ -141,6 +141,8 @@ Token Lexer_next(Lexer* self, bool* failure) {
       .type = TT_Eof
    };
 
+   bool int_is_negative = false;
+
    loop {
       if (Lexer_advance(self)) goto failure;
       if (self->current == EOF) break;
@@ -166,10 +168,24 @@ Token Lexer_next(Lexer* self, bool* failure) {
                   }
                } break;
 
+               case '-': {
+                  if (self->peek >= '0' && self->peek <= '9') {
+                     token.length += 1;
+                     int_is_negative = true;
+                     self->mode = LM_Integer;
+                  }
+               } break;
+
                case ' ':  break;
                case '\n': break;
 
                default: {
+                  if (self->current >= '0' && self->current <= '9') {
+                     int_is_negative = false;
+                     self->mode = LM_Integer;
+                     goto reparse_char;
+                  }
+                  
                   if (char_is_identifier_allowed(self->current)) {
                      self->mode = LM_Normal;
                      goto reparse_char;
@@ -196,9 +212,18 @@ Token Lexer_next(Lexer* self, bool* failure) {
          } break;
 
          case LM_Integer: {
-            mcu_todo("not yet implemented");
-         }
-         
+            token.int_literal *= 10;
+            token.int_literal += self->current - '0';
+
+            if (!(self->peek >= '0' && self->peek <= '9')) {
+               if (int_is_negative) token.int_literal = -token.int_literal;
+               token.type = TT_IntLiteral;
+               return token;
+            }
+
+            token.length += 1;
+         } break;
+
          default: {
             panic("unreachable");
          }
