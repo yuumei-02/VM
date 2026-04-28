@@ -104,7 +104,6 @@ Trap VM_perform_cycle(VM* self) {
       if (new_addr >= self->memory_size)                                             \
          return T_IllegalAddress;
          
-   Instr_debug_print(instr);
    switch (instr.op_code) {
       // Interrups
       case OC_Halt: {

@@ -5,19 +5,19 @@
 // @todo: Make a more sensical encoding
 typedef enum : u16 {
    // Interrups
-   OC_Halt = 0b0000'0000'0000'0000,
+   OC_Halt,
 
    // Memory
-   OC_Mov = 0b0000'1000'0000'0000,
+   OC_Mov,
 
    // Arithmatic
-   OC_Add = 0b0000'0100'0000'0000,
-   OC_Min = 0b0000'0100'0000'0001,
-   OC_Mul = 0b0000'0100'0000'0010,
-   OC_Div = 0b0000'0100'0000'0011,
+   OC_Add,
+   OC_Min,
+   OC_Mul,
+   OC_Div,
 
    // Jumps
-   OC_Jmp = 0b0000'0010'0000'0000,
+   OC_Jmp,
 } OpCode;
 
 /// [R] register [V] value    [M] memory addr
@@ -38,4 +38,5 @@ typedef struct {
 } __attribute__((packed)) Instr;
 
 void Instr_debug_print(Instr self);
+const cstr OpCode_to_cstr(OpCode self);
 

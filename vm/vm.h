@@ -4,8 +4,7 @@
 
 #include "instr.h"
 
-#define GPR_REG_COUNT 16
-static_assert(GPR_REG_COUNT > 1);
+#define GPR_REG_COUNT 12
 
 typedef u64 Word;
 
@@ -14,8 +13,10 @@ typedef struct {
    usize memory_size;
 
    struct {
-      Word gpr[GPR_REG_COUNT - 1];
-      Word ip;
+      Word gpr[GPR_REG_COUNT];
+      Word ip; // Instruction pointer
+      // @reference: https://en.wikipedia.org/wiki/FLAGS_register
+      Word fr; // Flag register
    } registers;
 } VM;
 
