@@ -6,5 +6,5 @@ cflags := -Wall -Wextra -pedantic -Wswitch-enum -std=c23 -I../
 clibs := -lmcu-debug
 
 assembler:
-	$(compiler) $(cflags) *.c -o ../build/bin/assembler $(clibs)
+	$(compiler) $(cflags) *.c ../vm/instr.c -o ../build/bin/assembler $(clibs)
 

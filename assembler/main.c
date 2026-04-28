@@ -8,6 +8,18 @@ i32 assemble(const cstr path) {
    Lexer lexer = Lexer_new(path, &failure);
    if (failure) return 1;
 
+   Token token;
+   do {
+      token = Lexer_next(&lexer, &failure);
+      if (failure) {
+         Lexer_free(&lexer);
+         return 1;
+      }
+
+      Token_print(lexer.path, token);
+      Token_free(token);
+   } while (token.type != TT_Eof);
+
    Lexer_free(&lexer);
    return 0;
 }
